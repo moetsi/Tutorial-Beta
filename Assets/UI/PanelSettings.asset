@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   themeUss: {fileID: -4733365628477956816, guid: 0860a887b179eae45a0aea668ad7e087, type: 3}
   m_TargetTexture: {fileID: 0}
-  m_ScaleMode: 1
+  m_ScaleMode: 0
   m_Scale: 1
   m_ReferenceDpi: 96
   m_FallbackDpi: 96
@@ -34,4 +34,4 @@ MonoBehaviour:
   m_AtlasBlitShader: {fileID: 4800000, guid: 662b00f569c02f84bbc426d4c41ceb5e, type: 3}
   m_RuntimeShader: {fileID: 4800000, guid: 1e5f18a346ed454418f93aa7eaf55791, type: 3}
   m_RuntimeWorldShader: {fileID: 4800000, guid: 7082954141e3ccc43bc3b217cf12e2e0, type: 3}
-  textSettings: {fileID: 0}
+  textSettings: {fileID: 11400000, guid: 259151c0cab3a4f80818ef4879e09bd8, type: 2}
