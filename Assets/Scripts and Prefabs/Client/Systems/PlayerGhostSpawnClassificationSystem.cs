@@ -46,25 +46,41 @@ public partial class PlayerGhostSpawnClassificationSystem : SystemBase
         var networkIdComponent = GetSingleton<NetworkIdComponent>();
         //The false is to signify that the data will NOT be read-only
         var commandTargetFromEntity = GetComponentDataFromEntity<CommandTargetComponent>(false);
+        //Check if this is an AR player
+        IsARPlayerComponent arComponent;
+        var isAR = TryGetSingleton<IsARPlayerComponent>(out arComponent);
 
         //We will look for Player prefabs that we have not added a "PlayerClassifiedTag" to (which means we have checked the player if it is "ours")
         Entities
         .WithAll<PlayerTag>()
         .WithNone<PlayerClassifiedTag>()
-        .ForEach((Entity entity, int entityInQueryIndex, in GhostOwnerComponent ghostOwnerComponent) =>
+        .ForEach((Entity entity, int entityInQueryIndex, in GhostOwnerComponent ghostOwnerComponent, in Translation translation, in Rotation rotation) =>
         {
             // If this is true this means this Player is mine (because the GhostOwnerComponent value is equal to the NetworkId)
             // Remember the GhostOwnerComponent value is set by the server and is ghosted to the client
             if (ghostOwnerComponent.NetworkId == networkIdComponent.Value)
             {
-                //This creates our camera
-                var cameraEntity = commandBuffer.Instantiate(entityInQueryIndex, camera);
-                //This is how you "attach" a prefab entity to another
-                commandBuffer.AddComponent(entityInQueryIndex, cameraEntity, new Parent { Value = entity });
-                commandBuffer.AddComponent(entityInQueryIndex, cameraEntity, new LocalToParent() );
+                if(!isAR)
+                {
+                    //This creates our camera
+                    var cameraEntity = commandBuffer.Instantiate(entityInQueryIndex, camera);
+                    //This is how you "attach" a prefab entity to another
+                    commandBuffer.AddComponent(entityInQueryIndex, cameraEntity, new Parent { Value = entity });
+                    commandBuffer.AddComponent(entityInQueryIndex, cameraEntity, new LocalToParent() );
+                }
+                //If we are an AR player we will create SpawnPositionForARoComponent
+                if (isAR)
+                {
+                    var spawnLocation = commandBuffer.CreateEntity(entityInQueryIndex);
+                    commandBuffer.AddComponent(entityInQueryIndex, spawnLocation, new SpawnPositionForARComponent {
+                        spawnTranslation = translation.Value,
+                        spawnRotation = rotation.Value
+                    });
+                }
             }
             // This means we have classified this Player prefab
             commandBuffer.AddComponent(entityInQueryIndex, entity, new PlayerClassifiedTag() );
+
 
         }).ScheduleParallel();
 

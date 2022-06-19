@@ -5,23 +5,17 @@ using Unity.NetCode;
 using Unity.Networking.Transport.Utilities;
 using Unity.Collections;
 using Unity.Physics;
-using Unity.Physics.Systems;
 using Unity.Jobs;
 using UnityEngine;
 
 //InputResponseMovementSystem runs on both the Client and Server
 //It is predicted on the client but "decided" on the server
-[UpdateInWorld(TargetWorld.ClientAndServer)]
-// [UpdateInGroup(typeof(PredictedPhysicsSystemGroup))]
-// want to change the Velocity BEFORE the physics is run (which happens after BuildPhysicsWorld)
-// so it is not like the input had no affect on the player for a frame), so we run before BuildPhysicsWorld
-[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-[UpdateBefore(typeof(BuildPhysicsWorld))]
+[UpdateInWorld(TargetWorld.ClientAndServer)] 
 public partial class InputResponseMovementSystem : SystemBase
 {
     //This is a special NetCode group that provides a "prediction tick" and a fixed "DeltaTime"
     private GhostPredictionSystemGroup m_PredictionGroup;
-     
+    
 
     protected override void OnCreate()
     {
@@ -29,12 +23,6 @@ public partial class InputResponseMovementSystem : SystemBase
 
         //We will grab this system so we can use its "prediction tick" and "DeltaTime"
         m_PredictionGroup = World.GetOrCreateSystem<GhostPredictionSystemGroup>();
-
-        // Creating this Singleton is what allows the client to predict physics
-        // Once the singleton is present, all the physics systems are moved into a new group inside the GhostPredictionSystemGroup that run in sync with the ghost simulation as expected.
-        // The PhysicsVelocity is replicated to all clients and it is the only thing it necessary to sync the physic state.
-        Entity physicsSingleton = EntityManager.CreateEntity();
-        EntityManager.AddComponentData(physicsSingleton, new PredictedPhysicsConfig {});
         
     }
 
@@ -53,17 +41,18 @@ public partial class InputResponseMovementSystem : SystemBase
 
         //We will grab the buffer of player commands from the player entity
         var inputFromEntity = GetBufferFromEntity<PlayerCommand>(true);
+
         //We are looking for player entities that have PlayerCommands in their buffer
         Entities
         .WithReadOnly(inputFromEntity)
         .WithAll<PlayerTag, PlayerCommand>()
-        .ForEach((Entity entity, int entityInQueryIndex, ref Rotation rotation, ref PhysicsVelocity velocity,
+        .ForEach((Entity entity, ref Translation translation, ref Rotation rotation, ref PhysicsVelocity velocity,
                 in GhostOwnerComponent ghostOwner, in PredictedGhostComponent prediction) =>
         {
             //Here we check if we SHOULD do the prediction based on the tick, if we shouldn't, we return
             if (!GhostPredictionSystemGroup.ShouldPredict(currentTick, prediction))
                 return;
-            
+
             //We grab the buffer of commands from the player entity
             var input = inputFromEntity[entity];
 
@@ -108,10 +97,18 @@ public partial class InputResponseMovementSystem : SystemBase
                 newQuaternion.eulerAngles = new Vector3(pitch,yaw, 0);
                 rotation.Value = newQuaternion;
             }
-           
+            //If the PlayerCommand is from an AR player we will update movement in a special way
+            if (inputData.isAR == 1)
+            {
+                //The player is going to be (0,-2,10) relative to the AR pose
+                //This will make the player appear a bit lower and in front of the camera, making it easier to control
+                translation.Value = (inputData.arTranslation) - (math.mul(rotation.Value, new float3(0,2,0)).xyz) + (math.mul(rotation.Value, new float3(0,0,10)).xyz);
+                //The player will face the same direction as the camera
+                rotation.Value = (inputData.arRotation);
+            }
+
         }).ScheduleParallel();
 
         //No need to .AddJobHandleForProducer() because we did not need a CommandBuffer to make structural changes
-    }
-    
+    }   
 }
