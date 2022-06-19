@@ -287,7 +287,7 @@
     height: 68px;
     margin-left: 10px;
     background-image: url('/Assets/UI/moetsi-logo-hq.png');
-    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-scale-mode: stretch-to-fill;
 }
 
 .local-games-list-container {
